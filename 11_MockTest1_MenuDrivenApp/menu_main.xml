@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_whatsapp"
+        android:title="Send WhatsApp Message" />
+    <item
+        android:id="@+id/menu_play_music"
+        android:title="Play Music" />
+    <item
+        android:id="@+id/menu_theme_toggle"
+        android:title="Toggle Dark or Light Theme" />
+</menu>
