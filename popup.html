@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>iRetard</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="popup-shell" aria-live="polite">
+      <header class="popup-header">
+        <h1 class="app-title">iRetard</h1>
+        <p class="subtitle">Control your time</p>
+      </header>
+
+      <section class="surface">
+        <form id="limitForm" class="limit-form" novalidate>
+          <label for="dailyLimit">Daily limit (minutes)</label>
+          <div class="limit-row">
+            <input id="dailyLimit" type="number" min="1" max="1440" inputmode="numeric" required>
+            <button id="saveBtn" type="submit">Save</button>
+          </div>
+        </form>
+
+        <div class="progress-wrap" role="img" aria-label="Daily usage progress">
+          <div class="progress-track">
+            <div id="usageProgress" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <section class="stats" aria-label="Usage stats">
+          <p><span>Used today</span><strong id="usedToday">0m</strong></p>
+          <p><span>Remaining</span><strong id="remaining">0m</strong></p>
+          <p><span>Emergency uses left</span><strong id="emergencyLeft">3</strong></p>
+          <p><span>Status</span><strong id="status">Normal</strong></p>
+        </section>
+      </section>
+
+      <section class="actions">
+        <button id="emergencyBtn" class="emergency" type="button">Use Emergency (5 min)</button>
+
+        <div class="theme-switcher" role="group" aria-label="Theme">
+          <button type="button" class="theme-option" data-theme-option="auto">Auto</button>
+          <button type="button" class="theme-option" data-theme-option="light">Light</button>
+          <button type="button" class="theme-option" data-theme-option="dark">Dark</button>
+        </div>
+      </section>
+
+      <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+
+      <footer class="popup-footer">Runs fully local on this browser.</footer>
+    </main>
+
+    <script src="storage.js"></script>
+    <script src="blocker.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

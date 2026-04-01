@@ -1,0 +1,255 @@
+:root {
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --shadow-soft: 0 8px 20px rgba(8, 10, 20, 0.08);
+  --focus-ring: 0 0 0 2px rgba(108, 121, 163, 0.28);
+  --surface-gap: 16px;
+  --accent: #68739a;
+  --accent-strong: #556088;
+  --danger: #8e5560;
+  --danger-strong: #7a4953;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f5f7fb;
+  --line: #dfe4ee;
+  --text: #151823;
+  --text-subtle: #5f677b;
+  --success: #356b59;
+  --error: #8f3f4c;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0b0c;
+  --surface: #131316;
+  --surface-muted: #17191f;
+  --line: #252a35;
+  --text: #f0f2f6;
+  --text-subtle: #9aa3ba;
+  --success: #7ebba6;
+  --error: #d28a96;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #0b0b0c;
+    --surface: #131316;
+    --surface-muted: #17191f;
+    --line: #252a35;
+    --text: #f0f2f6;
+    --text-subtle: #9aa3ba;
+    --success: #7ebba6;
+    --error: #d28a96;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-muted: #f5f7fb;
+    --line: #dfe4ee;
+    --text: #151823;
+    --text-subtle: #5f677b;
+    --success: #356b59;
+    --error: #8f3f4c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 360px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+}
+
+.popup-shell {
+  padding: 16px;
+}
+
+.popup-header {
+  margin-bottom: var(--surface-gap);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--text-subtle);
+  font-size: 13px;
+}
+
+.surface {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+
+.limit-form label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-subtle);
+  margin-bottom: 8px;
+}
+
+.limit-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+}
+
+input[type="number"]:focus-visible,
+button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+button {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+#saveBtn {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+#saveBtn:hover {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.progress-wrap {
+  margin-top: 16px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 180ms ease;
+}
+
+.stats {
+  margin-top: 16px;
+}
+
+.stats p {
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stats span {
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+.stats strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.actions {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.emergency {
+  width: 100%;
+  color: #ffffff;
+  background: var(--danger);
+}
+
+.emergency:hover {
+  background: var(--danger-strong);
+}
+
+.theme-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.theme-option {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text-subtle);
+}
+
+.theme-option[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+.feedback {
+  min-height: 16px;
+  margin: 12px 2px 0;
+  font-size: 12px;
+  color: var(--success);
+}
+
+.feedback.error {
+  color: var(--error);
+}
+
+.popup-footer {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-subtle);
+}

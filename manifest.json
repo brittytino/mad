@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "iRetard",
+  "description": "Blocks Instagram Reels/Explore, enforces daily limits, and supports emergency unlocks.",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://www.instagram.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "iRetard",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.instagram.com/*"
+      ],
+      "js": [
+        "storage.js",
+        "blocker.js",
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
