@@ -1,5 +1,5 @@
 (() => {
-  const BLOCKED_PATH_PREFIXES = ["/reels", "/explore"];
+  const BLOCKED_PATH_PREFIXES = ["/reels", "/reel", "/explore", "/video/unified_cvc"];
   const ALLOWED_PATH_PREFIXES = ["/stories", "/direct/inbox", "/direct/t"];
 
   function toUrl(input) {
@@ -52,6 +52,10 @@
   function getBlockReason(input, state, now = Date.now()) {
     const url = toUrl(input);
     if (!url || !isInstagramUrl(url)) {
+      return null;
+    }
+
+    if (globalThis.IretardStorage.isEmergencyActive(state, now)) {
       return null;
     }
 

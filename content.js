@@ -1,12 +1,83 @@
 (() => {
   const BLOCK_CONTAINER_ID = "iretard-block-root";
-  const BLOCK_TITLE_ID = "iretard-title";
-  const BLOCK_SUBTITLE_ID = "iretard-subtitle";
-  const BLOCK_REASON_ID = "iretard-reason";
-  const BLOCK_USED_ID = "iretard-used";
-  const BLOCK_RESET_ID = "iretard-reset";
+  const BLOCK_STYLE_ID = "iretard-block-style";
+  const PREBLOCK_STYLE_ID = "iretard-preblock-style";
+  const HARD_BLOCK_CLASS = "iretard-hard-block";
+
+  function normalizePath(pathname) {
+    const lower = String(pathname || "/").toLowerCase();
+    return lower.endsWith("/") && lower !== "/" ? lower.slice(0, -1) : lower;
+  }
+
+  function startsWithPath(pathname, prefix) {
+    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  }
+
+  function isStrictBlockedPath(pathname) {
+    const normalizedPath = normalizePath(pathname);
+    return startsWithPath(normalizedPath, "/reels")
+      || startsWithPath(normalizedPath, "/reel")
+      || startsWithPath(normalizedPath, "/explore")
+      || startsWithPath(normalizedPath, "/video/unified_cvc");
+  }
+
+  function isStrictBlockedUrl(input) {
+    try {
+      const url = input instanceof URL ? input : new URL(String(input || location.href), location.origin);
+      return isStrictBlockedPath(url.pathname);
+    } catch (_error) {
+      return isStrictBlockedPath(location.pathname);
+    }
+  }
+
+  function ensurePreBlockStyle() {
+    if (document.getElementById(PREBLOCK_STYLE_ID)) {
+      return;
+    }
+
+    const preStyle = document.createElement("style");
+    preStyle.id = PREBLOCK_STYLE_ID;
+    preStyle.textContent = `
+      html.${HARD_BLOCK_CLASS},
+      html.${HARD_BLOCK_CLASS} body {
+        overflow: hidden !important;
+      }
+
+      html.${HARD_BLOCK_CLASS} body {
+        visibility: hidden !important;
+      }
+
+      #${BLOCK_CONTAINER_ID} {
+        visibility: visible !important;
+      }
+    `;
+    document.documentElement.appendChild(preStyle);
+  }
+
+  if (isStrictBlockedUrl(location.href)) {
+    ensurePreBlockStyle();
+    document.documentElement.classList.add(HARD_BLOCK_CLASS);
+  }
+
   let unblockTimer = null;
-  let isShowingBlockScreen = false;
+  let observer = null;
+  let mutationQueued = false;
+  let currentReason = null;
+  let lastKnownState = globalThis.IretardStorage.normalizeState({});
+  let applyingBlockUi = false;
+
+  function clearPreBlockOnly() {
+    const preStyle = document.getElementById(PREBLOCK_STYLE_ID);
+    if (preStyle) {
+      preStyle.remove();
+    }
+
+    document.documentElement.classList.remove(HARD_BLOCK_CLASS);
+  }
+
+  function isEmergencyOverride(state = lastKnownState, now = Date.now()) {
+    return globalThis.IretardStorage.isEmergencyActive(state, now);
+  }
 
   function sendMessage(type, payload = {}) {
     return new Promise((resolve) => {
@@ -42,6 +113,12 @@
     });
   }
 
+  function getMsUntilNextMidnight(now = Date.now()) {
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    return Math.max(1000, nextMidnight.getTime() - now);
+  }
+
   async function getResolvedTheme() {
     try {
       const preference = await globalThis.IretardStorage.getThemePreference();
@@ -52,10 +129,175 @@
     }
   }
 
-  function getMsUntilNextMidnight(now = Date.now()) {
-    const nextMidnight = new Date(now);
-    nextMidnight.setHours(24, 0, 0, 0);
-    return Math.max(1000, nextMidnight.getTime() - now);
+  function ensureBlockStyles() {
+    if (document.getElementById(BLOCK_STYLE_ID)) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = BLOCK_STYLE_ID;
+    style.textContent = `
+      #${BLOCK_CONTAINER_ID} {
+        --bg: #ffffff;
+        --surface: #ffffff;
+        --line: #d9deea;
+        --text: #151925;
+        --subtle: #5f6980;
+        --shadow: 0 18px 44px rgba(20, 28, 48, 0.12);
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background: radial-gradient(1200px 500px at 20% -20%, rgba(114, 134, 180, 0.14), transparent 65%),
+          radial-gradient(900px 400px at 95% 120%, rgba(122, 169, 152, 0.12), transparent 60%),
+          var(--bg);
+        color: var(--text);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        box-sizing: border-box;
+        font-family: "Avenir Next", "Manrope", "SF Pro Display", "Segoe UI", sans-serif;
+      }
+
+      #${BLOCK_CONTAINER_ID}[data-theme="dark"] {
+        --bg: #0d1018;
+        --surface: #151a24;
+        --line: #2a3242;
+        --text: #f2f5fb;
+        --subtle: #a2aec6;
+        --shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+      }
+
+      #${BLOCK_CONTAINER_ID} .iretard-card {
+        width: min(640px, 100%);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 32px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      #${BLOCK_CONTAINER_ID} .iretard-title {
+        margin: 0;
+        font-size: clamp(34px, 6vw, 46px);
+        font-weight: 640;
+        letter-spacing: -0.02em;
+        line-height: 1.06;
+      }
+
+      #${BLOCK_CONTAINER_ID} .iretard-subtitle {
+        margin: 14px 0 22px;
+        font-size: clamp(17px, 3vw, 21px);
+        color: var(--subtle);
+      }
+
+      #${BLOCK_CONTAINER_ID} .iretard-meta {
+        margin: 10px 0;
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      #${BLOCK_CONTAINER_ID} .iretard-footer {
+        margin-top: 18px;
+        font-size: 14px;
+        color: var(--subtle);
+      }
+
+      @media (max-width: 720px) {
+        #${BLOCK_CONTAINER_ID} {
+          padding: 16px;
+        }
+
+        #${BLOCK_CONTAINER_ID} .iretard-card {
+          padding: 24px;
+        }
+      }
+    `;
+    document.documentElement.appendChild(style);
+  }
+
+  function ensureBlockRoot() {
+    let root = document.getElementById(BLOCK_CONTAINER_ID);
+    if (root) {
+      return root;
+    }
+
+    ensureBlockStyles();
+
+    root = document.createElement("div");
+    root.id = BLOCK_CONTAINER_ID;
+    root.innerHTML = `
+      <div class="iretard-card">
+        <h1 class="iretard-title" data-el="title"></h1>
+        <p class="iretard-subtitle" data-el="subtitle"></p>
+        <p class="iretard-meta" data-el="reason"></p>
+        <p class="iretard-meta" data-el="used"></p>
+        <p class="iretard-footer" data-el="reset"></p>
+      </div>
+    `;
+
+    document.documentElement.appendChild(root);
+    return root;
+  }
+
+  function getBlockText(reason, state) {
+    const safeState = globalThis.IretardStorage.normalizeState(state || lastKnownState);
+
+    if (reason === "limit") {
+      return {
+        title: "Not this time.",
+        subtitle: "You didn't come here with a purpose.",
+        reasonLine: "Daily limit reached. Instagram is locked for today.",
+        usedLine: `Time used today: ${formatMinutes(safeState.usedToday)}`,
+        resetLine: `Access resets tomorrow (${getTomorrowLabel()}).`
+      };
+    }
+
+    return {
+      title: "Not this time.",
+      subtitle: "You didn't come here with a purpose.",
+      reasonLine: "Reels and Explore are blocked by design.",
+      usedLine: `Time used today: ${formatMinutes(safeState.usedToday)}`,
+      resetLine: `Try stories or direct messages instead.`
+    };
+  }
+
+  async function showBlockOverlay(reason, state) {
+    applyingBlockUi = true;
+    const root = ensureBlockRoot();
+    const resolvedTheme = await getResolvedTheme();
+    const text = getBlockText(reason, state);
+
+    root.setAttribute("data-theme", resolvedTheme);
+    root.style.display = "flex";
+
+    root.querySelector('[data-el="title"]').textContent = text.title;
+    root.querySelector('[data-el="subtitle"]').textContent = text.subtitle;
+    root.querySelector('[data-el="reason"]').textContent = text.reasonLine;
+    root.querySelector('[data-el="used"]').textContent = text.usedLine;
+    root.querySelector('[data-el="reset"]').textContent = text.resetLine;
+
+    ensurePreBlockStyle();
+    document.documentElement.classList.add(HARD_BLOCK_CLASS);
+    currentReason = reason;
+    applyingBlockUi = false;
+  }
+
+  function hideBlockOverlay() {
+    applyingBlockUi = true;
+    const root = document.getElementById(BLOCK_CONTAINER_ID);
+    if (root) {
+      root.style.display = "none";
+    }
+
+    const preStyle = document.getElementById(PREBLOCK_STYLE_ID);
+    if (preStyle) {
+      preStyle.remove();
+    }
+
+    document.documentElement.classList.remove(HARD_BLOCK_CLASS);
+    currentReason = null;
+    applyingBlockUi = false;
   }
 
   function clearUnblockTimer() {
@@ -65,133 +307,6 @@
     }
   }
 
-  function buildBlockMarkup() {
-    return `
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          width: 100%;
-          height: 100%;
-          font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        #${BLOCK_CONTAINER_ID} {
-          --bg: #ffffff;
-          --surface: #ffffff;
-          --line: #e3e6ef;
-          --text: #11131a;
-          --subtle: #5f677a;
-          --shadow: 0 12px 28px rgba(15, 20, 34, 0.08);
-          min-height: 100vh;
-          background: var(--bg);
-          color: var(--text);
-          display: grid;
-          place-items: center;
-          padding: 24px 16px;
-          box-sizing: border-box;
-        }
-
-        #${BLOCK_CONTAINER_ID}[data-theme="dark"] {
-          --bg: #0b0b0c;
-          --surface: #121215;
-          --line: #252a35;
-          --text: #f3f5f9;
-          --subtle: #9aa3ba;
-          --shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
-        }
-
-        .iretard-card {
-          width: min(560px, 100%);
-          border: 1px solid var(--line);
-          border-radius: 12px;
-          padding: 24px;
-          background: var(--surface);
-          box-shadow: var(--shadow);
-        }
-
-        .iretard-title {
-          margin: 0;
-          font-size: clamp(30px, 5.5vw, 40px);
-          font-weight: 600;
-          letter-spacing: -0.02em;
-          line-height: 1.1;
-        }
-
-        .iretard-subtitle {
-          margin: 12px 0 18px;
-          font-size: clamp(16px, 2.8vw, 20px);
-          font-weight: 400;
-          color: var(--subtle);
-        }
-
-        .iretard-meta {
-          margin: 8px 0;
-          font-size: 14px;
-          color: var(--text);
-        }
-
-        .iretard-footer {
-          margin-top: 16px;
-          font-size: 14px;
-          color: var(--subtle);
-        }
-      </style>
-      <div id="${BLOCK_CONTAINER_ID}">
-        <div class="iretard-card">
-          <h1 id="${BLOCK_TITLE_ID}" class="iretard-title"></h1>
-          <p id="${BLOCK_SUBTITLE_ID}" class="iretard-subtitle"></p>
-          <p id="${BLOCK_REASON_ID}" class="iretard-meta"></p>
-          <p id="${BLOCK_USED_ID}" class="iretard-meta"></p>
-          <p id="${BLOCK_RESET_ID}" class="iretard-footer"></p>
-        </div>
-      </div>
-    `;
-  }
-
-  function ensureBlockScreenShell() {
-    if (document.getElementById(BLOCK_CONTAINER_ID)) {
-      return;
-    }
-
-    document.documentElement.innerHTML = `<head><title>Instagram blocked - iRetard</title></head><body>${buildBlockMarkup()}</body>`;
-  }
-
-  function renderBlockScreen(mode, state, resolvedTheme) {
-    ensureBlockScreenShell();
-
-    const root = document.getElementById(BLOCK_CONTAINER_ID);
-    const title = document.getElementById(BLOCK_TITLE_ID);
-    const subtitle = document.getElementById(BLOCK_SUBTITLE_ID);
-    const reasonLine = document.getElementById(BLOCK_REASON_ID);
-    const usedLine = document.getElementById(BLOCK_USED_ID);
-    const resetLine = document.getElementById(BLOCK_RESET_ID);
-
-    if (!root || !title || !subtitle || !reasonLine || !usedLine || !resetLine) {
-      return;
-    }
-
-    root.setAttribute("data-theme", resolvedTheme);
-    title.textContent = "Not this time.";
-    subtitle.textContent = "You didn't come here with a purpose.";
-    reasonLine.textContent = mode === "limit"
-      ? "Daily limit reached. Instagram is locked for today."
-      : "Reels and Explore are blocked by design.";
-    usedLine.textContent = `Time used today: ${formatMinutes(state.usedToday)}`;
-    resetLine.textContent = `Access resets tomorrow (${getTomorrowLabel()}).`;
-
-    isShowingBlockScreen = true;
-  }
-
-  function clearBlockScreenIfNeeded() {
-    if (!isShowingBlockScreen) {
-      return;
-    }
-
-    // A reload is needed to restore the original Instagram DOM once emergency unlock is activated.
-    location.reload();
-  }
-
   function scheduleNextCheck(state, reason, now) {
     clearUnblockTimer();
 
@@ -199,15 +314,15 @@
       return;
     }
 
-    let waitMs = null;
+    let waitMs = 500;
 
     if (reason === "limit" && !globalThis.IretardStorage.isEmergencyActive(state, now)) {
       waitMs = getMsUntilNextMidnight(now) + 500;
     } else if (globalThis.IretardStorage.isEmergencyActive(state, now)) {
-      waitMs = Math.max(200, state.emergencyActiveUntil - now + 200);
+      waitMs = Math.max(250, state.emergencyActiveUntil - now + 200);
     } else {
       const remainingMs = Math.max(0, globalThis.IretardStorage.getDailyLimitMs(state) - state.usedToday);
-      waitMs = Math.max(200, remainingMs + 200);
+      waitMs = Math.max(250, remainingMs + 200);
     }
 
     unblockTimer = setTimeout(() => {
@@ -215,7 +330,29 @@
     }, Math.min(waitMs, 2147483647));
   }
 
+  function routeRequiresHardBlock() {
+    return isStrictBlockedUrl(location.href) && !isEmergencyOverride();
+  }
+
+  function hardRouteGuard() {
+    if (!routeRequiresHardBlock()) {
+      if (currentReason === "route") {
+        hideBlockOverlay();
+      }
+      return false;
+    }
+
+    void showBlockOverlay("route", lastKnownState);
+    return true;
+  }
+
   async function evaluateAndRender(source) {
+    if (isStrictBlockedUrl(location.href) && !isEmergencyOverride()) {
+      void showBlockOverlay("route", lastKnownState);
+    }
+
+    const routeBlockedNow = hardRouteGuard();
+
     try {
       const response = await sendMessage("SYNC_USAGE_AND_EVALUATE", {
         url: location.href,
@@ -226,18 +363,64 @@
         return;
       }
 
-      if (response.reason === "route" || response.reason === "limit") {
-        const resolvedTheme = await getResolvedTheme();
-        renderBlockScreen(response.reason, response.state, resolvedTheme);
+      lastKnownState = globalThis.IretardStorage.normalizeState(response.state);
+
+      if (isEmergencyOverride(lastKnownState, response.now)) {
+        hideBlockOverlay();
+        scheduleNextCheck(response.state, null, response.now);
+        return;
+      }
+
+      if (response.reason === "limit") {
+        await showBlockOverlay("limit", response.state);
         scheduleNextCheck(response.state, response.reason, response.now);
         return;
       }
 
-      clearBlockScreenIfNeeded();
+      if (routeBlockedNow || response.reason === "route") {
+        await showBlockOverlay("route", response.state);
+        scheduleNextCheck(response.state, "route", response.now);
+        return;
+      }
+
+      hideBlockOverlay();
       scheduleNextCheck(response.state, response.reason, response.now);
     } catch (_error) {
-      // Ignore to avoid breaking Instagram when extension messaging is transiently unavailable.
+      if (routeBlockedNow) {
+        void showBlockOverlay("route", lastKnownState);
+      }
     }
+  }
+
+  function scheduleMutationGuard() {
+    if (mutationQueued) {
+      return;
+    }
+
+    mutationQueued = true;
+    queueMicrotask(() => {
+      mutationQueued = false;
+      if (applyingBlockUi || !routeRequiresHardBlock()) {
+        return;
+      }
+
+      void showBlockOverlay("route", lastKnownState);
+    });
+  }
+
+  function startMutationObserver() {
+    if (observer) {
+      return;
+    }
+
+    observer = new MutationObserver(() => {
+      scheduleMutationGuard();
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
   }
 
   function patchHistoryForSpaNavigation() {
@@ -246,7 +429,9 @@
     }
 
     history.__iretardPatched = true;
-    const fireUrlEvent = () => window.dispatchEvent(new Event("iretard:urlchange"));
+    const fireUrlEvent = () => {
+      window.dispatchEvent(new Event("iretard:urlchange"));
+    };
 
     const originalPushState = history.pushState;
     history.pushState = function patchedPushState(...args) {
@@ -263,27 +448,30 @@
     };
 
     window.addEventListener("popstate", fireUrlEvent, { passive: true });
+    window.addEventListener("hashchange", fireUrlEvent, { passive: true });
+    window.addEventListener("pageshow", fireUrlEvent, { passive: true });
     window.addEventListener("iretard:urlchange", () => {
+      if (isStrictBlockedUrl(location.href) && !isEmergencyOverride()) {
+        void showBlockOverlay("route", lastKnownState);
+      }
       void evaluateAndRender("urlchange");
     });
   }
 
   async function notifyPageActivity() {
     const isActive = document.visibilityState === "visible" && document.hasFocus();
-    try {
-      await sendMessage(isActive ? "PAGE_ACTIVE" : "PAGE_INACTIVE", { url: location.href });
-    } catch (_error) {
-      // Ignore to keep page stable when service worker is restarting.
-    }
+    await sendMessage(isActive ? "PAGE_ACTIVE" : "PAGE_INACTIVE", { url: location.href });
   }
 
   function attachActivityListeners() {
     document.addEventListener("visibilitychange", () => {
       void notifyPageActivity();
+      void evaluateAndRender("visibility");
     });
 
     window.addEventListener("focus", () => {
       void notifyPageActivity();
+      void evaluateAndRender("focus");
     }, { passive: true });
 
     window.addEventListener("blur", () => {
@@ -296,8 +484,12 @@
   }
 
   chrome.runtime.onMessage.addListener((message) => {
-    if (!message || (message.type !== "STATE_UPDATED" && message.type !== "THEME_UPDATED")) {
+    if (!message || message.type !== "STATE_UPDATED") {
       return;
+    }
+
+    if (message.state) {
+      lastKnownState = globalThis.IretardStorage.normalizeState(message.state);
     }
 
     void evaluateAndRender("state_update");
@@ -308,13 +500,26 @@
       return;
     }
 
-    if (isShowingBlockScreen) {
+    if (currentReason) {
       void evaluateAndRender("theme_change");
     }
   });
 
   patchHistoryForSpaNavigation();
   attachActivityListeners();
-  void notifyPageActivity();
-  void evaluateAndRender("boot");
+  startMutationObserver();
+
+  void globalThis.IretardStorage.getState(Date.now()).then((state) => {
+    lastKnownState = globalThis.IretardStorage.normalizeState(state);
+    if (isEmergencyOverride(lastKnownState)) {
+      clearPreBlockOnly();
+    }
+    hardRouteGuard();
+    void notifyPageActivity();
+    void evaluateAndRender("boot");
+  }).catch(() => {
+    hardRouteGuard();
+    void notifyPageActivity();
+    void evaluateAndRender("boot");
+  });
 })();

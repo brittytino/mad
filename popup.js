@@ -2,6 +2,8 @@
   const rootElement = document.documentElement;
   const dailyLimitInput = document.getElementById("dailyLimit");
   const limitForm = document.getElementById("limitForm");
+  const saveBtn = document.getElementById("saveBtn");
+  const limitLockNoticeEl = document.getElementById("limitLockNotice");
   const usageProgressEl = document.getElementById("usageProgress");
   const usedTodayEl = document.getElementById("usedToday");
   const remainingEl = document.getElementById("remaining");
@@ -9,7 +11,7 @@
   const statusEl = document.getElementById("status");
   const emergencyBtn = document.getElementById("emergencyBtn");
   const feedbackEl = document.getElementById("feedback");
-  const themeButtons = Array.from(document.querySelectorAll("[data-theme-option]"));
+  const themeToggle = document.getElementById("themeToggle");
 
   const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   let currentThemePreference = globalThis.IretardStorage.THEME_PREFERENCES.AUTO;
@@ -45,6 +47,17 @@
     feedbackEl.classList.toggle("error", isError);
   }
 
+  async function renderFromLocalState(feedbackMessage = "") {
+    const now = Date.now();
+    const state = await globalThis.IretardStorage.getState(now);
+    const metrics = globalThis.IretardStorage.buildMetrics(state, now);
+    renderState(state, metrics);
+
+    if (feedbackMessage) {
+      setFeedback(feedbackMessage, true);
+    }
+  }
+
   function normalizeStatePayload(state, metrics) {
     const safeState = globalThis.IretardStorage.normalizeState(state);
     const safeMetrics = metrics && typeof metrics === "object"
@@ -60,16 +73,15 @@
     };
   }
 
-  function updateThemeButtons(activePreference) {
-    for (const button of themeButtons) {
-      button.setAttribute("data-active", String(button.dataset.themeOption === activePreference));
-    }
-  }
-
   function applyResolvedTheme(preference) {
     const resolved = globalThis.IretardStorage.resolveTheme(preference, systemThemeQuery.matches);
     rootElement.setAttribute("data-theme", resolved);
-    updateThemeButtons(preference);
+
+    if (themeToggle) {
+      themeToggle.setAttribute("aria-pressed", String(resolved === "dark"));
+      themeToggle.dataset.mode = resolved;
+      themeToggle.title = resolved === "dark" ? "Switch to light" : "Switch to dark";
+    }
   }
 
   async function loadThemePreference() {
@@ -98,10 +110,22 @@
     usageProgressEl.style.width = `${Math.round(ratio * 100)}%`;
   }
 
+  function isLimitLockedToday(state) {
+    return state.limitLockedDate === globalThis.IretardStorage.getDayStamp(Date.now());
+  }
+
+  function renderLimitLockState(state) {
+    const locked = isLimitLockedToday(state);
+    dailyLimitInput.disabled = locked;
+    saveBtn.disabled = locked;
+    limitLockNoticeEl.hidden = !locked;
+  }
+
   function renderState(stateInput, metricsInput) {
     const { state, metrics } = normalizeStatePayload(stateInput, metricsInput);
 
     dailyLimitInput.value = String(state.dailyLimit);
+    renderLimitLockState(state);
     usedTodayEl.textContent = formatMinutes(state.usedToday);
     remainingEl.textContent = formatMinutes(metrics.remainingMs);
     emergencyLeftEl.textContent = String(metrics.emergencyUsesLeft);
@@ -125,13 +149,21 @@
       });
 
       if (!response || !response.ok || !response.state) {
-        setFeedback("Could not load extension state.", true);
+        await renderFromLocalState(
+          response && response.error
+            ? `State sync fallback: ${response.error}`
+            : "Background unavailable. Loaded local state."
+        );
         return;
       }
 
       renderState(response.state, response.metrics);
     } catch (_error) {
-      setFeedback("Could not load extension state.", true);
+      try {
+        await renderFromLocalState("Background unavailable. Loaded local state.");
+      } catch (_storageError) {
+        setFeedback("Could not load extension state.", true);
+      }
     }
   }
 
@@ -140,6 +172,11 @@
     setFeedback("");
 
     const nextLimit = Number(dailyLimitInput.value);
+    if (dailyLimitInput.disabled) {
+      setFeedback("Locked for today", true);
+      return;
+    }
+
     if (!Number.isFinite(nextLimit) || nextLimit < 1 || nextLimit > 1440) {
       setFeedback("Enter a value between 1 and 1440.", true);
       return;
@@ -149,7 +186,12 @@
       const response = await sendMessage("SET_DAILY_LIMIT", { dailyLimit: nextLimit });
 
       if (!response || !response.ok || !response.state) {
-        setFeedback(response && response.error ? response.error : "Failed to save daily limit.", true);
+        setFeedback(
+          response && response.error
+            ? response.error
+            : "Background unavailable. Could not save daily limit.",
+          true
+        );
         return;
       }
 
@@ -166,7 +208,12 @@
     try {
       const response = await sendMessage("ACTIVATE_EMERGENCY");
       if (!response || !response.ok || !response.state) {
-        setFeedback(response && response.error ? response.error : "Emergency unlock failed.", true);
+        setFeedback(
+          response && response.error
+            ? response.error
+            : "Background unavailable. Emergency unlock failed.",
+          true
+        );
         return;
       }
 
@@ -177,13 +224,12 @@
     }
   });
 
-  for (const button of themeButtons) {
-    button.addEventListener("click", async () => {
-      const nextPreference = button.dataset.themeOption;
-      if (!nextPreference) {
-        return;
-      }
-
+  if (themeToggle) {
+    themeToggle.addEventListener("click", async () => {
+      const resolved = rootElement.getAttribute("data-theme") || "light";
+      const nextPreference = resolved === "dark"
+        ? globalThis.IretardStorage.THEME_PREFERENCES.LIGHT
+        : globalThis.IretardStorage.THEME_PREFERENCES.DARK;
       await persistThemePreference(nextPreference);
     });
   }

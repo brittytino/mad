@@ -8,18 +8,55 @@
   </head>
   <body>
     <main class="popup-shell" aria-live="polite">
-      <header class="popup-header">
-        <h1 class="app-title">iRetard</h1>
-        <p class="subtitle">Control your time</p>
+      <header class="hero">
+        <div class="brand-wrap" aria-label="iRetard brand">
+          <img class="brand-logo" src="assets/logo.png" alt="iRetard logo" width="20" height="20">
+          <div>
+            <h1 class="app-title">iRetard</h1>
+            <p class="subtitle">System-level focus control</p>
+          </div>
+        </div>
+
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false">
+          <span class="theme-knob">
+            <svg class="theme-icon sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="M4.93 4.93l1.41 1.41"></path>
+              <path d="M17.66 17.66l1.41 1.41"></path>
+              <path d="M2 12h2"></path>
+              <path d="M20 12h2"></path>
+              <path d="M4.93 19.07l1.41-1.41"></path>
+              <path d="M17.66 6.34l1.41-1.41"></path>
+            </svg>
+            <svg class="theme-icon moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 13a8.5 8.5 0 1 1-10-10 7 7 0 0 0 10 10z"></path>
+            </svg>
+          </span>
+          <span class="theme-labels"><span>Sun</span><span>Moon</span></span>
+        </button>
       </header>
 
-      <section class="surface">
+      <section class="panel" aria-label="Daily limit settings">
+        <div class="panel-topline">
+          <p>Today</p>
+          <strong id="status">Normal</strong>
+        </div>
+
         <form id="limitForm" class="limit-form" novalidate>
-          <label for="dailyLimit">Daily limit (minutes)</label>
+          <label for="dailyLimit" class="field-label">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="8"></circle>
+              <path d="M12 7v5l3 2"></path>
+            </svg>
+            Daily limit (minutes)
+          </label>
           <div class="limit-row">
             <input id="dailyLimit" type="number" min="1" max="1440" inputmode="numeric" required>
-            <button id="saveBtn" type="submit">Save</button>
+            <button id="saveBtn" type="submit">Apply</button>
           </div>
+          <p id="limitLockNotice" class="lock-notice" hidden>Locked for today</p>
         </form>
 
         <div class="progress-wrap" role="img" aria-label="Daily usage progress">
@@ -29,21 +66,47 @@
         </div>
 
         <section class="stats" aria-label="Usage stats">
-          <p><span>Used today</span><strong id="usedToday">0m</strong></p>
-          <p><span>Remaining</span><strong id="remaining">0m</strong></p>
-          <p><span>Emergency uses left</span><strong id="emergencyLeft">3</strong></p>
-          <p><span>Status</span><strong id="status">Normal</strong></p>
+          <p>
+            <span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v9l6 3"></path>
+                <circle cx="12" cy="12" r="8"></circle>
+              </svg>
+              Used today
+            </span>
+            <strong id="usedToday">0m</strong>
+          </p>
+          <p>
+            <span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h16"></path>
+                <path d="M14 6l6 6-6 6"></path>
+              </svg>
+              Remaining
+            </span>
+            <strong id="remaining">0m</strong>
+          </p>
+          <p>
+            <span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3l8 5v8l-8 5-8-5V8z"></path>
+              </svg>
+              Emergency uses left
+            </span>
+            <strong id="emergencyLeft">3</strong>
+          </p>
         </section>
       </section>
 
       <section class="actions">
-        <button id="emergencyBtn" class="emergency" type="button">Use Emergency (5 min)</button>
-
-        <div class="theme-switcher" role="group" aria-label="Theme">
-          <button type="button" class="theme-option" data-theme-option="auto">Auto</button>
-          <button type="button" class="theme-option" data-theme-option="light">Light</button>
-          <button type="button" class="theme-option" data-theme-option="dark">Dark</button>
-        </div>
+        <button id="emergencyBtn" class="emergency" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3l8 5v8l-8 5-8-5V8z"></path>
+            <path d="M12 8v5"></path>
+            <circle cx="12" cy="16" r="0.7" fill="currentColor" stroke="none"></circle>
+          </svg>
+          Use Emergency (5 min)
+        </button>
       </section>
 
       <p id="feedback" class="feedback" role="status" aria-live="polite"></p>

@@ -1,70 +1,145 @@
 importScripts("storage.js", "blocker.js");
 
-const DNR_RULES = [
+const BASE_ALLOW_RULES = [
   {
     id: 1001,
-    priority: 3,
+    priority: 5,
     action: { type: "allow" },
     condition: {
-      urlFilter: "||instagram.com/api/v1/direct_v2/",
-      resourceTypes: ["xmlhttprequest", "fetch"]
+      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/api\\/v1\\/direct_v2\\/",
+      resourceTypes: ["xmlhttprequest"]
     }
   },
   {
     id: 1002,
-    priority: 3,
+    priority: 5,
     action: { type: "allow" },
     condition: {
-      urlFilter: "||instagram.com/api/v1/stories/",
-      resourceTypes: ["xmlhttprequest", "fetch"]
+      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/api\\/v1\\/stories\\/",
+      resourceTypes: ["xmlhttprequest"]
     }
-  },
-  {
-    id: 1003,
-    priority: 3,
-    action: { type: "allow" },
-    condition: {
-      urlFilter: "||instagram.com/api/v1/feed/reels_tray/",
-      resourceTypes: ["xmlhttprequest", "fetch"]
-    }
-  },
+  }
+];
+
+const BLOCK_RULES = [
   {
     id: 1101,
-    priority: 1,
+    priority: 4,
     action: { type: "block" },
     condition: {
-      urlFilter: "||instagram.com/api/v1/feed/reels",
-      resourceTypes: ["xmlhttprequest", "fetch"]
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/reels(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1106,
+    priority: 4,
+    action: { type: "block" },
+    condition: {
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/explore(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
     }
   },
   {
     id: 1102,
-    priority: 1,
+    priority: 4,
     action: { type: "block" },
     condition: {
-      urlFilter: "||instagram.com/explore",
-      resourceTypes: ["xmlhttprequest", "fetch"]
+      regexFilter: "^https:\\/\\/i\\.instagram\\.com\\/api\\/v1\\/feed\\/reels",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
     }
   },
   {
     id: 1103,
-    priority: 1,
+    priority: 4,
     action: { type: "block" },
     condition: {
-      urlFilter: "||instagram.com/reels",
-      resourceTypes: ["xmlhttprequest", "fetch"]
+      regexFilter: "^https:\\/\\/i\\.instagram\\.com\\/api\\/v1\\/discover\\/explore",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
     }
   },
   {
     id: 1104,
-    priority: 1,
+    priority: 4,
     action: { type: "block" },
     condition: {
-      urlFilter: "||instagram.com/api/v1/discover/web/explore_grid/",
-      resourceTypes: ["xmlhttprequest", "fetch"]
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/video\\/unified_cvc(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1105,
+    priority: 4,
+    action: { type: "block" },
+    condition: {
+      regexFilter: "^https:\\/\\/graph\\.instagram\\.com\\/logging_client_events(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
     }
   }
 ];
+
+const EMERGENCY_BYPASS_RULES = [
+  {
+    id: 1201,
+    priority: 10,
+    action: { type: "allow" },
+    condition: {
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/reels(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1202,
+    priority: 10,
+    action: { type: "allow" },
+    condition: {
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/explore(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1203,
+    priority: 10,
+    action: { type: "allow" },
+    condition: {
+      regexFilter: "^https:\\/\\/i\\.instagram\\.com\\/api\\/v1\\/feed\\/reels",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1204,
+    priority: 10,
+    action: { type: "allow" },
+    condition: {
+      regexFilter: "^https:\\/\\/i\\.instagram\\.com\\/api\\/v1\\/discover\\/explore",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1205,
+    priority: 10,
+    action: { type: "allow" },
+    condition: {
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/video\\/unified_cvc(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    id: 1206,
+    priority: 10,
+    action: { type: "allow" },
+    condition: {
+      regexFilter: "^https:\\/\\/graph\\.instagram\\.com\\/logging_client_events(\\/|\\?|$)",
+      resourceTypes: ["main_frame", "xmlhttprequest"]
+    }
+  }
+];
+
+const ALL_DNR_RULE_IDS = [
+  ...BASE_ALLOW_RULES,
+  ...BLOCK_RULES,
+  ...EMERGENCY_BYPASS_RULES
+].map((rule) => rule.id);
 
 const tracking = {
   tabId: null,
@@ -73,6 +148,7 @@ const tracking = {
   startedAt: 0
 };
 let trackingLock = Promise.resolve();
+let networkEmergencyMode = null;
 
 function runGuarded(task) {
   void task().catch((error) => {
@@ -86,11 +162,37 @@ function withTrackingLock(task) {
   return next;
 }
 
-async function installNetworkRules() {
+function buildNetworkRules(emergencyActive) {
+  return emergencyActive
+    ? [...BASE_ALLOW_RULES, ...EMERGENCY_BYPASS_RULES, ...BLOCK_RULES]
+    : [...BASE_ALLOW_RULES, ...BLOCK_RULES];
+}
+
+async function installNetworkRules(emergencyActive = false) {
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: DNR_RULES.map((rule) => rule.id),
-    addRules: DNR_RULES
+    removeRuleIds: ALL_DNR_RULE_IDS,
+    addRules: buildNetworkRules(emergencyActive)
   });
+}
+
+async function ensureNetworkRulesForState(state, now = Date.now()) {
+  const shouldUseEmergencyMode = globalThis.IretardStorage.isEmergencyActive(state, now);
+  if (networkEmergencyMode === shouldUseEmergencyMode) {
+    return;
+  }
+
+  try {
+    await installNetworkRules(shouldUseEmergencyMode);
+    networkEmergencyMode = shouldUseEmergencyMode;
+  } catch (error) {
+    console.error("iRetard network rules sync failed:", error);
+  }
+}
+
+async function syncNetworkRulesToCurrentState() {
+  const now = Date.now();
+  const state = await globalThis.IretardStorage.getState(now);
+  await ensureNetworkRulesForState(state, now);
 }
 
 function withInFlightUsage(state, now = Date.now()) {
@@ -124,7 +226,7 @@ async function broadcastState(state) {
   const tabs = await chrome.tabs.query({ url: ["https://www.instagram.com/*"] });
   await Promise.all(
     tabs.map(async (tab) => {
-      if (!tab.id) {
+      if (tab.id === undefined) {
         return;
       }
 
@@ -198,9 +300,31 @@ async function syncTrackingToActiveTab() {
   });
 }
 
+async function isForegroundActiveTab(tabId, windowId) {
+  if (tabId === undefined || tabId === null) {
+    return false;
+  }
+
+  const [activeTab] = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true
+  });
+
+  if (!activeTab || activeTab.id !== tabId) {
+    return false;
+  }
+
+  if (windowId === undefined || windowId === null) {
+    return true;
+  }
+
+  return activeTab.windowId === windowId;
+}
+
 async function evaluateUrl(url) {
   const now = Date.now();
   const persistedState = await globalThis.IretardStorage.getState(now);
+  await ensureNetworkRulesForState(persistedState, now);
   const liveState = withInFlightUsage(persistedState, now);
   const reason = globalThis.IretardBlocker.getBlockReason(url, liveState, now);
 
@@ -218,11 +342,21 @@ async function setDailyLimit(minutes) {
     throw new Error("Daily limit must be between 1 and 1440 minutes.");
   }
 
-  const state = await globalThis.IretardStorage.updateState((current) => ({
-    ...current,
-    dailyLimit: parsed,
-    lastReset: current.lastReset || Date.now()
-  }));
+  const now = Date.now();
+  const today = globalThis.IretardStorage.getDayStamp(now);
+
+  const state = await withTrackingLock(async () => globalThis.IretardStorage.updateState((current) => {
+    if (current.limitLockedDate === today && parsed !== current.dailyLimit) {
+      throw new Error("Locked for today");
+    }
+
+    return {
+      ...current,
+      dailyLimit: parsed,
+      limitLockedDate: today,
+      lastReset: current.lastReset || now
+    };
+  }, now));
 
   await broadcastState(state);
   return state;
@@ -250,12 +384,14 @@ async function activateEmergency() {
     };
   }
 
-  state = await globalThis.IretardStorage.updateState((current) => ({
+  state = await withTrackingLock(async () => globalThis.IretardStorage.updateState((current) => ({
     ...current,
     emergencyCount: current.emergencyCount + 1,
     emergencyActiveUntil: now + globalThis.IretardStorage.EMERGENCY_DURATION_MS,
     lastReset: current.lastReset || now
-  }), now);
+  }), now));
+
+  await ensureNetworkRulesForState(state, now);
 
   await broadcastState(state);
   return {
@@ -268,14 +404,14 @@ async function activateEmergency() {
 
 chrome.runtime.onInstalled.addListener(() => {
   runGuarded(async () => {
-    await installNetworkRules();
+    await syncNetworkRulesToCurrentState();
     await syncTrackingToActiveTab();
   });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   runGuarded(async () => {
-    await installNetworkRules();
+    await syncNetworkRulesToCurrentState();
     await syncTrackingToActiveTab();
   });
 });
@@ -368,8 +504,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === "PAGE_ACTIVE") {
+      let ignored = false;
       await withTrackingLock(async () => {
-        if (sender.tab && sender.tab.id) {
+        if (sender.tab && sender.tab.id !== undefined) {
+          const isForeground = await isForegroundActiveTab(sender.tab.id, sender.tab.windowId);
+          if (!isForeground) {
+            ignored = true;
+            return;
+          }
+
           if (tracking.tabId !== sender.tab.id) {
             await flushTrackedUsage(true);
           }
@@ -381,13 +524,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       });
 
-      sendResponse({ ok: true });
+      sendResponse({ ok: true, ignored });
       return;
     }
 
     if (message.type === "PAGE_INACTIVE") {
       await withTrackingLock(async () => {
-        if (sender.tab && sender.tab.id && tracking.tabId === sender.tab.id) {
+        if (sender.tab && sender.tab.id !== undefined && tracking.tabId === sender.tab.id) {
           await flushTrackedUsage(true);
         }
       });

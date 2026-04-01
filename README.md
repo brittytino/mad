@@ -70,6 +70,15 @@ iRetard is a local-only Manifest V3 Chrome extension that blocks Instagram Reels
 4. Block screen theme follows override and system theme when set to auto.
 5. Browser back/forward remains functional on blocked routes.
 
+## Strict Regression Scenarios
+
+- Open `https://www.instagram.com/reels/` directly: blocked instantly with no flash.
+- Spam back/forward between allowed and blocked routes: blocked routes stay blocked.
+- Reload while on `/reels` or `/explore`: block overlay appears immediately.
+- Open `/reels` in a new tab: blocked immediately.
+- Set daily limit once: input becomes locked with `Locked for today` until next day.
+- Popup visual quality: premium spacing, logo, icons, refined controls, no browser-default look.
+
 ## Load Unpacked
 
 1. Open `chrome://extensions`.

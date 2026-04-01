@@ -4,7 +4,8 @@
     usedToday: 0,
     lastReset: 0,
     emergencyCount: 0,
-    emergencyActiveUntil: 0
+    emergencyActiveUntil: 0,
+    limitLockedDate: ""
   });
   const STATE_KEYS = Object.keys(DEFAULT_STATE);
 
@@ -62,7 +63,8 @@
       usedToday: Math.max(0, Math.floor(toSafeNumber(source.usedToday, DEFAULT_STATE.usedToday))),
       lastReset: Math.max(0, Math.floor(toSafeNumber(source.lastReset, DEFAULT_STATE.lastReset))),
       emergencyCount: clamp(Math.floor(toSafeNumber(source.emergencyCount, DEFAULT_STATE.emergencyCount)), 0, EMERGENCY_LIMIT_PER_DAY),
-      emergencyActiveUntil: Math.max(0, Math.floor(toSafeNumber(source.emergencyActiveUntil, DEFAULT_STATE.emergencyActiveUntil)))
+      emergencyActiveUntil: Math.max(0, Math.floor(toSafeNumber(source.emergencyActiveUntil, DEFAULT_STATE.emergencyActiveUntil))),
+      limitLockedDate: typeof source.limitLockedDate === "string" ? source.limitLockedDate : ""
     };
   }
 
@@ -80,6 +82,7 @@
       usedToday: 0,
       emergencyCount: 0,
       emergencyActiveUntil: 0,
+      limitLockedDate: "",
       lastReset: now
     };
   }
@@ -132,13 +135,7 @@
 
   async function updateState(updater, now = Date.now()) {
     const current = await getState(now);
-    let candidate = null;
-
-    try {
-      candidate = await updater({ ...current });
-    } catch (_error) {
-      candidate = null;
-    }
+    const candidate = await updater({ ...current });
 
     const next = candidate ? normalizeState(candidate) : current;
 
@@ -202,6 +199,7 @@
     ONE_MINUTE_MS,
     normalizeThemePreference,
     resolveTheme,
+    getDayStamp,
     isNewDay,
     normalizeState,
     resetForNewDay,
