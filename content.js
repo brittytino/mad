@@ -22,13 +22,7 @@
       return globalThis.IretardBlocker.isBlockedPath(pathname);
     } catch (_error) {
       const normalizedPath = normalizePath(pathname);
-      if (startsWithPath(normalizedPath, "/explore/search")) {
-        return false;
-      }
-
-      return normalizedPath === "/"
-        || startsWithPath(normalizedPath, "/explore")
-        || startsWithPath(normalizedPath, "/reels")
+      return startsWithPath(normalizedPath, "/reels")
         || startsWithPath(normalizedPath, "/reel")
         || startsWithPath(normalizedPath, "/video/unified_cvc");
     }
@@ -629,9 +623,9 @@
     return {
       title: "Not this time.",
       subtitle: "You didn't come here with a purpose.",
-      reasonLine: "Home feed and Explore are blocked. Use stories, DMs, profile, search, or notifications.",
+      reasonLine: "Reels are redirected to direct messages. Home feed posts are blocked at network level.",
       usedLine: `Time used today: ${formatMinutes(safeState.usedToday)}`,
-      resetLine: `Try stories, direct messages, profile, search, or notifications.`
+      resetLine: `Use stories, direct messages, profile, search, and notifications.`
     };
   }
 

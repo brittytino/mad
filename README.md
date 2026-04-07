@@ -11,20 +11,9 @@ iRetard is a strict local-only Manifest V3 Chrome extension for Instagram discip
 
 ## Network Blocking
 
-The extension blocks these request patterns across Instagram hosts:
+The extension blocks this request pattern:
 
 - /feed/timeline/
-- /discover/topical_explore
-- /clips/discover
-- /logging/
-- /async_ads_privacy/
-- /async_critical_notices/
-- /api/v1/media/.../seen/
-- /api/v1/fbupload/
-- /api/v1/stats/
-- /api/v1/commerce/
-- /api/v1/shopping/
-- /api/v1/sellable_items/
 
 ## Tab Redirect
 
@@ -34,10 +23,7 @@ The extension blocks these request patterns across Instagram hosts:
 ## What Gets Disabled
 
 - Feed posts: blocked at network layer
-- Explore content: blocked at network layer
-- Reels content: redirected to DMs + blocked fragment loading
-- Analytics and telemetry: blocked at network layer
-- Shopping and commerce preloads: blocked at network layer
+- Reels tab: redirected to DMs + blocked fragment loading
 
 ## What Still Works
 

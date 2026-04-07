@@ -1,6 +1,8 @@
 (() => {
-  const BLOCKED_PATH_PREFIXES = ["/explore", "/reels", "/reel", "/video/unified_cvc"];
+  const BLOCKED_PATH_PREFIXES = ["/reels", "/reel", "/video/unified_cvc"];
   const ALLOWED_PATH_PREFIXES = [
+    "/",
+    "/p",
     "/stories",
     "/direct",
     "/accounts/activity",
@@ -34,50 +36,6 @@
     {
       id: "feed_timeline",
       test: (pathname) => pathname.includes("/feed/timeline")
-    },
-    {
-      id: "discover_topical_explore",
-      test: (pathname) => pathname.includes("/discover/topical_explore")
-    },
-    {
-      id: "clips_discover",
-      test: (pathname) => pathname.includes("/clips/discover")
-    },
-    {
-      id: "logging",
-      test: (pathname) => pathname.includes("/logging")
-    },
-    {
-      id: "async_ads_privacy",
-      test: (pathname) => pathname.includes("/async_ads_privacy")
-    },
-    {
-      id: "async_critical_notices",
-      test: (pathname) => pathname.includes("/async_critical_notices")
-    },
-    {
-      id: "media_seen",
-      test: (pathname) => pathname.includes("/api/v1/media/") && pathname.includes("/seen")
-    },
-    {
-      id: "fbupload",
-      test: (pathname) => pathname.includes("/api/v1/fbupload")
-    },
-    {
-      id: "stats",
-      test: (pathname) => pathname.includes("/api/v1/stats")
-    },
-    {
-      id: "commerce",
-      test: (pathname) => pathname.includes("/api/v1/commerce")
-    },
-    {
-      id: "shopping",
-      test: (pathname) => pathname.includes("/api/v1/shopping")
-    },
-    {
-      id: "sellable_items",
-      test: (pathname) => pathname.includes("/api/v1/sellable_items")
     }
   ];
 
@@ -116,6 +74,10 @@
 
   function isBlockedPath(pathname) {
     const normalized = normalizePath(pathname);
+    if (normalized === "/") {
+      return false;
+    }
+
     if (isExplicitlyAllowedPath(normalized)) {
       return false;
     }
@@ -124,8 +86,7 @@
       return false;
     }
 
-    // Strict mode blocks home feed and all non-allowlisted routes.
-    return true;
+    return BLOCKED_PATH_PREFIXES.some((prefix) => startsWithPath(normalized, prefix));
   }
 
   function isExplicitlyAllowedPath(pathname) {

@@ -78,24 +78,6 @@ const BLOCK_RULES = [
     }
   },
   {
-    id: 1118,
-    priority: 8,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/explore(\\/(?!search(\\/|\\?|$)).*)?(\\?|$)",
-      resourceTypes: ["main_frame"]
-    }
-  },
-  {
-    id: 1119,
-    priority: 8,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/(\\?|$)",
-      resourceTypes: ["main_frame"]
-    }
-  },
-  {
     id: 1104,
     priority: 7,
     action: { type: "block" },
@@ -103,132 +85,37 @@ const BLOCK_RULES = [
       regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*feed\\/timeline(\\/|\\?|$)",
       resourceTypes: ["xmlhttprequest"]
     }
-  },
-  {
-    id: 1105,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*discover\\/topical_explore(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1106,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*clips\\/discover(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1107,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i|graph)\\.instagram\\.com\\/.*logging(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest", "ping", "other"]
-    }
-  },
-  {
-    id: 1108,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*async_ads_privacy(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1109,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*async_critical_notices(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1110,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*api\\/v1\\/media\\/.*\\/seen(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1111,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*api\\/v1\\/fbupload(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1112,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*api\\/v1\\/stats(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1113,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*api\\/v1\\/commerce(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1114,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*api\\/v1\\/shopping(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1115,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*api\\/v1\\/sellable_items(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest"]
-    }
-  },
-  {
-    id: 1116,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/video\\/unified_cvc(\\/|\\?|$)",
-      resourceTypes: ["main_frame", "xmlhttprequest"]
-    }
-  },
-  {
-    id: 1117,
-    priority: 7,
-    action: { type: "block" },
-    condition: {
-      regexFilter: "^https:\\/\\/graph\\.instagram\\.com\\/logging_client_events(\\/|\\?|$)",
-      resourceTypes: ["xmlhttprequest", "ping", "other"]
-    }
   }
 ];
 
-const LEGACY_RULE_IDS = [1201, 1202, 1203, 1204, 1205, 1206];
+const STALE_RULE_IDS = [
+  1105,
+  1106,
+  1107,
+  1108,
+  1109,
+  1110,
+  1111,
+  1112,
+  1113,
+  1114,
+  1115,
+  1116,
+  1117,
+  1118,
+  1119,
+  1201,
+  1202,
+  1203,
+  1204,
+  1205,
+  1206
+];
 
 const ALL_DNR_RULE_IDS = [
   ...BASE_ALLOW_RULES,
   ...BLOCK_RULES,
-  ...LEGACY_RULE_IDS.map((id) => ({ id }))
+  ...STALE_RULE_IDS.map((id) => ({ id }))
 ].map((rule) => rule.id);
 
 const tracking = {
