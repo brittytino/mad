@@ -35,7 +35,29 @@
   const NETWORK_BLOCK_RULES = [
     {
       id: "feed_timeline",
-      test: (pathname) => pathname.includes("/feed/timeline")
+      test: (url, pathname) => {
+        if (
+          pathname.includes("/feed/timeline")
+          || pathname.includes("/feed/following")
+          || pathname.includes("/web/feed/timeline")
+        ) {
+          return true;
+        }
+
+        const isGraphqlFeedPath = pathname === "/graphql/query" || pathname === "/api/graphql";
+        if (!isGraphqlFeedPath) {
+          return false;
+        }
+
+        const queryText = `${url.search} ${url.searchParams.get("fb_api_req_friendly_name") || ""}`.toLowerCase();
+        return queryText.includes("feed")
+          && (
+            queryText.includes("timeline")
+            || queryText.includes("for_you")
+            || queryText.includes("home")
+            || queryText.includes("xdt_api__v1__feed__timeline")
+          );
+      }
     }
   ];
 
@@ -116,7 +138,7 @@
     }
 
     const pathname = normalizePath(url.pathname);
-    const match = NETWORK_BLOCK_RULES.find((rule) => rule.test(pathname));
+    const match = NETWORK_BLOCK_RULES.find((rule) => rule.test(url, pathname));
     return match ? match.id : null;
   }
 

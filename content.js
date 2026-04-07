@@ -4,9 +4,12 @@
   const PREBLOCK_STYLE_ID = "iretard-preblock-style";
   const CHALLENGE_CONTAINER_ID = "iretard-challenge-root";
   const CHALLENGE_STYLE_ID = "iretard-challenge-style";
+  const HOME_FEED_BLOCK_STYLE_ID = "iretard-home-feed-style";
   const HARD_BLOCK_CLASS = "iretard-hard-block";
   const DIRECT_INBOX_URL = "https://www.instagram.com/direct/inbox/";
   const FEUR_HOOKS_KEY = "FeurHooks";
+  const USAGE_HEARTBEAT_INTERVAL_MS = 1000;
+  const USAGE_SYNC_INTERVAL_MS = 10000;
 
   function normalizePath(pathname) {
     const lower = String(pathname || "/").toLowerCase();
@@ -144,6 +147,8 @@
   let challengeActiveMs = 0;
   let challengeVisible = false;
   let challengeAnswer = null;
+  let usageHeartbeatTimer = null;
+  let lastUsageSyncAt = 0;
 
   ensureFeurHooks();
 
@@ -158,6 +163,54 @@
 
   function isEmergencyOverride(state = lastKnownState, now = Date.now()) {
     return globalThis.IretardStorage.isEmergencyActive(state, now);
+  }
+
+  function shouldApplyHomeFeedVisualBlock() {
+    return normalizePath(location.pathname) === "/" && !isEmergencyOverride();
+  }
+
+  function ensureHomeFeedVisualBlockStyle() {
+    if (document.getElementById(HOME_FEED_BLOCK_STYLE_ID)) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = HOME_FEED_BLOCK_STYLE_ID;
+    style.textContent = `
+      body main article,
+      body main [role="feed"] > div {
+        display: none !important;
+      }
+
+      body main::before {
+        content: "Home feed posts are blocked by iRetard.";
+        display: block;
+        margin: 16px auto;
+        padding: 12px 14px;
+        max-width: 640px;
+        border: 1px solid rgba(118, 138, 178, 0.35);
+        border-radius: 12px;
+        background: rgba(118, 138, 178, 0.11);
+        color: #22304d;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+      }
+    `;
+
+    document.documentElement.appendChild(style);
+  }
+
+  function syncHomeFeedVisualBlock() {
+    const style = document.getElementById(HOME_FEED_BLOCK_STYLE_ID);
+    if (shouldApplyHomeFeedVisualBlock()) {
+      ensureHomeFeedVisualBlockStyle();
+      return;
+    }
+
+    if (style) {
+      style.remove();
+    }
   }
 
   function sendMessage(type, payload = {}) {
@@ -735,6 +788,8 @@
       return;
     }
 
+    syncHomeFeedVisualBlock();
+
     if (isStrictBlockedUrl(location.href) && !isEmergencyOverride()) {
       void showBlockOverlay("route", lastKnownState);
     }
@@ -742,7 +797,13 @@
     const routeBlockedNow = hardRouteGuard();
 
     try {
-      const response = await sendMessage("SYNC_USAGE_AND_EVALUATE", {
+      const now = Date.now();
+      const shouldSyncUsage = source !== "heartbeat" || (now - lastUsageSyncAt >= USAGE_SYNC_INTERVAL_MS);
+      if (shouldSyncUsage) {
+        lastUsageSyncAt = now;
+      }
+
+      const response = await sendMessage(shouldSyncUsage ? "SYNC_USAGE_AND_EVALUATE" : "EVALUATE_URL", {
         url: location.href,
         source
       });
@@ -752,6 +813,7 @@
       }
 
       lastKnownState = globalThis.IretardStorage.normalizeState(response.state);
+      syncHomeFeedVisualBlock();
 
       if (isEmergencyOverride(lastKnownState, response.now)) {
         hideBlockOverlay();
@@ -793,6 +855,8 @@
         return;
       }
 
+      syncHomeFeedVisualBlock();
+
       if (applyingBlockUi || !routeRequiresHardBlock()) {
         return;
       }
@@ -814,6 +878,38 @@
       childList: true,
       subtree: true
     });
+  }
+
+  function stopUsageHeartbeat() {
+    if (!usageHeartbeatTimer) {
+      return;
+    }
+
+    clearInterval(usageHeartbeatTimer);
+    usageHeartbeatTimer = null;
+  }
+
+  function startUsageHeartbeat() {
+    if (usageHeartbeatTimer) {
+      return;
+    }
+
+    usageHeartbeatTimer = setInterval(() => {
+      if (document.visibilityState !== "visible" || !document.hasFocus()) {
+        return;
+      }
+
+      void evaluateAndRender("heartbeat");
+    }, USAGE_HEARTBEAT_INTERVAL_MS);
+  }
+
+  function syncUsageHeartbeat() {
+    if (document.visibilityState === "visible" && document.hasFocus()) {
+      startUsageHeartbeat();
+      return;
+    }
+
+    stopUsageHeartbeat();
   }
 
   function patchHistoryForSpaNavigation() {
@@ -862,20 +958,24 @@
 
   function attachActivityListeners() {
     document.addEventListener("visibilitychange", () => {
+      syncUsageHeartbeat();
       void notifyPageActivity();
       void evaluateAndRender("visibility");
     });
 
     window.addEventListener("focus", () => {
+      syncUsageHeartbeat();
       void notifyPageActivity();
       void evaluateAndRender("focus");
     }, { passive: true });
 
     window.addEventListener("blur", () => {
+      syncUsageHeartbeat();
       void notifyPageActivity();
     }, { passive: true });
 
     window.addEventListener("beforeunload", () => {
+      stopUsageHeartbeat();
       void sendMessage("PAGE_INACTIVE", { url: location.href });
     });
   }
@@ -907,6 +1007,7 @@
   attachActivityListeners();
   startMutationObserver();
   startChallengeTicker();
+  syncUsageHeartbeat();
 
   void globalThis.IretardStorage.getState(Date.now()).then((state) => {
     lastKnownState = globalThis.IretardStorage.normalizeState(state);
@@ -916,11 +1017,13 @@
 
     redirectRouteIfNeeded("boot");
     hardRouteGuard();
+    syncHomeFeedVisualBlock();
     void notifyPageActivity();
     void evaluateAndRender("boot");
   }).catch(() => {
     redirectRouteIfNeeded("boot_error");
     hardRouteGuard();
+    syncHomeFeedVisualBlock();
     void notifyPageActivity();
     void evaluateAndRender("boot");
   });

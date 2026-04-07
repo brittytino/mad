@@ -82,7 +82,7 @@ const BLOCK_RULES = [
     priority: 7,
     action: { type: "block" },
     condition: {
-      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/.*feed\\/timeline(\\/|\\?|$)",
+      regexFilter: "^https:\\/\\/(www|i)\\.instagram\\.com\\/(.*(feed\\/timeline|feed\\/following|web\\/feed\\/timeline).*)$|^https:\\/\\/www\\.instagram\\.com\\/(graphql\\/query|api\\/graphql)\\/?\\?.*(feed|timeline|for_you|home|xdt_api__v1__feed__timeline)",
       resourceTypes: ["xmlhttprequest"]
     }
   }
@@ -184,11 +184,28 @@ function withInFlightUsage(state, now = Date.now()) {
   };
 }
 
+function buildTrackingSnapshot(state, now = Date.now()) {
+  const hasTrackedTab = tracking.tabId !== null && Boolean(tracking.url);
+  const isEligible = hasTrackedTab && globalThis.IretardBlocker.shouldTrackUsage(tracking.url, state, now);
+  const isActive = Boolean(tracking.startedAt && isEligible);
+
+  return {
+    active: isActive,
+    startedAt: tracking.startedAt || 0,
+    tabId: tracking.tabId,
+    windowId: tracking.windowId,
+    url: tracking.url || ""
+  };
+}
+
 async function broadcastState(state) {
+  const now = Date.now();
   const payload = {
     type: "STATE_UPDATED",
     state,
-    metrics: globalThis.IretardStorage.buildMetrics(state)
+    metrics: globalThis.IretardStorage.buildMetrics(state, now),
+    now,
+    tracking: buildTrackingSnapshot(state, now)
   };
 
   try {
@@ -305,6 +322,7 @@ async function evaluateUrl(url) {
   return {
     state: liveState,
     metrics: globalThis.IretardStorage.buildMetrics(liveState, now),
+    tracking: buildTrackingSnapshot(liveState, now),
     reason,
     now
   };
