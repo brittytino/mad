@@ -1,6 +1,29 @@
 (() => {
-  const BLOCKED_PATH_PREFIXES = ["/reels", "/reel", "/video/unified_cvc"];
-  const ALLOWED_PATH_PREFIXES = ["/stories", "/direct/inbox", "/direct/t"];
+  const BLOCKED_PATH_PREFIXES = ["/explore", "/reels", "/reel", "/video/unified_cvc"];
+  const ALLOWED_PATH_PREFIXES = [
+    "/stories",
+    "/direct",
+    "/accounts/activity",
+    "/explore/search"
+  ];
+  const RESERVED_PATH_HEADS = new Set([
+    "stories",
+    "direct",
+    "explore",
+    "reels",
+    "reel",
+    "accounts",
+    "video",
+    "api",
+    "graphql",
+    "about",
+    "legal",
+    "privacy",
+    "terms",
+    "developer",
+    "p",
+    "tv"
+  ]);
   const INSTAGRAM_HOSTNAMES = new Set([
     "www.instagram.com",
     "i.instagram.com",
@@ -93,12 +116,36 @@
 
   function isBlockedPath(pathname) {
     const normalized = normalizePath(pathname);
-    return BLOCKED_PATH_PREFIXES.some((prefix) => startsWithPath(normalized, prefix));
+    if (isExplicitlyAllowedPath(normalized)) {
+      return false;
+    }
+
+    if (isLikelyProfilePath(normalized)) {
+      return false;
+    }
+
+    // Strict mode blocks home feed and all non-allowlisted routes.
+    return true;
   }
 
   function isExplicitlyAllowedPath(pathname) {
     const normalized = normalizePath(pathname);
     return ALLOWED_PATH_PREFIXES.some((prefix) => startsWithPath(normalized, prefix));
+  }
+
+  function isLikelyProfilePath(pathname) {
+    const normalized = normalizePath(pathname);
+    if (normalized === "/") {
+      return false;
+    }
+
+    const segments = normalized.split("/").filter(Boolean);
+    const head = segments[0];
+    if (!head || RESERVED_PATH_HEADS.has(head)) {
+      return false;
+    }
+
+    return /^[a-z0-9._]+$/i.test(head);
   }
 
   function getNetworkBlockReason(input) {
@@ -178,6 +225,7 @@
     normalizePath,
     isInstagramUrl,
     isBlockedPath,
+    isLikelyProfilePath,
     getNetworkBlockReason,
     isBlockedNetworkUrl,
     shouldRedirectToDirectTab,

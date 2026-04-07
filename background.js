@@ -78,6 +78,24 @@ const BLOCK_RULES = [
     }
   },
   {
+    id: 1118,
+    priority: 8,
+    action: { type: "block" },
+    condition: {
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/explore(\\/(?!search(\\/|\\?|$)).*)?(\\?|$)",
+      resourceTypes: ["main_frame"]
+    }
+  },
+  {
+    id: 1119,
+    priority: 8,
+    action: { type: "block" },
+    condition: {
+      regexFilter: "^https:\\/\\/www\\.instagram\\.com\\/(\\?|$)",
+      resourceTypes: ["main_frame"]
+    }
+  },
+  {
     id: 1104,
     priority: 7,
     action: { type: "block" },

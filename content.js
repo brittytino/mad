@@ -18,10 +18,20 @@
   }
 
   function isStrictBlockedPath(pathname) {
-    const normalizedPath = normalizePath(pathname);
-    return startsWithPath(normalizedPath, "/reels")
-      || startsWithPath(normalizedPath, "/reel")
-      || startsWithPath(normalizedPath, "/video/unified_cvc");
+    try {
+      return globalThis.IretardBlocker.isBlockedPath(pathname);
+    } catch (_error) {
+      const normalizedPath = normalizePath(pathname);
+      if (startsWithPath(normalizedPath, "/explore/search")) {
+        return false;
+      }
+
+      return normalizedPath === "/"
+        || startsWithPath(normalizedPath, "/explore")
+        || startsWithPath(normalizedPath, "/reels")
+        || startsWithPath(normalizedPath, "/reel")
+        || startsWithPath(normalizedPath, "/video/unified_cvc");
+    }
   }
 
   function getRedirectUrlForInput(input) {
@@ -619,9 +629,9 @@
     return {
       title: "Not this time.",
       subtitle: "You didn't come here with a purpose.",
-      reasonLine: "Reels are disabled and redirected away from this tab.",
+      reasonLine: "Home feed and Explore are blocked. Use stories, DMs, profile, search, or notifications.",
       usedLine: `Time used today: ${formatMinutes(safeState.usedToday)}`,
-      resetLine: `Try stories or direct messages instead.`
+      resetLine: `Try stories, direct messages, profile, search, or notifications.`
     };
   }
 
